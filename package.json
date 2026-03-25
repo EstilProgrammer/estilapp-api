@@ -1,0 +1,19 @@
+{
+  "name": "estilapp-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API EstilApp: árbol de decisión / recomendación Top-3 + endpoint try-on (Render)",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}
