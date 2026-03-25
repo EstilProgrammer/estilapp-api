@@ -30,7 +30,7 @@ app.get('/health', (_req, res) => {
 
 /**
  * POST /recommend
- * Body JSON: { userFaceShape, headPoseProfile?, hairType?, hairDensity?, weights?, candidates: [{ id, faceShape, hairTexture? }] }
+ * Body JSON: { userFaceShape, headPoseProfile?, hairType?, hairDensity?, recommendationGender?, weights?, candidates: [{ id, faceShape, hairTexture?, targetGender? }] }
  */
 app.post('/recommend', (req, res) => {
   try {

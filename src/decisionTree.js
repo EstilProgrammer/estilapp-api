@@ -26,6 +26,33 @@ function normalizePose(p) {
   return 'FRONTAL'
 }
 
+function normalizeRecommendationGender(raw) {
+  const s = String(raw || '')
+    .trim()
+    .toLowerCase()
+  if (s === 'hombre' || s === 'mujer') return s
+  return 'todos'
+}
+
+function normalizeTargetGender(raw) {
+  const s = String(raw || '')
+    .trim()
+    .toLowerCase()
+  if (!s) return 'unisex'
+  if (s === 'masculino' || s === 'male' || s === 'man') return 'hombre'
+  if (s === 'femenino' || s === 'female' || s === 'woman') return 'mujer'
+  if (s === 'hombre' || s === 'mujer' || s === 'unisex' || s === 'todos') return s
+  return 'unisex'
+}
+
+function cutMatchesGender(cut, pref) {
+  if (pref === 'todos') return true
+  const tag = normalizeTargetGender(cut.targetGender)
+  if (pref === 'hombre') return tag === 'unisex' || tag === 'hombre' || tag === 'todos'
+  if (pref === 'mujer') return tag === 'unisex' || tag === 'mujer' || tag === 'todos'
+  return true
+}
+
 function hairTypeBonus(hairType, textureHint) {
   const t = (hairType || '').toLowerCase()
   const hint = (textureHint || '').toLowerCase()
@@ -47,7 +74,8 @@ function densityBonus(density) {
  * @param {string} [input.headPoseProfile]
  * @param {string} [input.hairType]
  * @param {string} [input.hairDensity]
- * @param {Array<{id:string, faceShape:string, hairTexture?:string}>} input.candidates
+ * @param {string} [input.recommendationGender] todos | hombre | mujer (alineado con la app)
+ * @param {Array<{id:string, faceShape:string, hairTexture?:string, targetGender?:string}>} input.candidates
  * @param {object} [input.weights] pesos opcionales desde feedback (app)
  */
 function scoreCandidate(input, cut) {
@@ -72,8 +100,10 @@ function scoreCandidate(input, cut) {
 }
 
 function recommendTopThree(input) {
+  const pref = normalizeRecommendationGender(input.recommendationGender)
   const list = Array.isArray(input.candidates) ? input.candidates : []
-  const scored = list.map((c) => ({
+  const filtered = list.filter((c) => cutMatchesGender(c, pref))
+  const scored = filtered.map((c) => ({
     id: String(c.id),
     score: scoreCandidate(input, c),
     faceShape: c.faceShape,
