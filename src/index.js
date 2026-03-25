@@ -12,6 +12,18 @@ app.use(express.json({ limit: '2mb' }))
 const TRYON_DEMO =
   String(process.env.TRYON_DEMO_PASS_THROUGH || 'true').toLowerCase() === 'true'
 
+app.get('/', (_req, res) => {
+  res.json({
+    service: 'estilapp-api',
+    message: 'API activa. Usa GET /health o los endpoints documentados en el README del repositorio.',
+    endpoints: {
+      'GET /health': 'comprobación de estado',
+      'POST /recommend': 'JSON → top3 recomendaciones',
+      'POST /try-on': 'multipart (image, haircutId, referenceImageUrl)',
+    },
+  })
+})
+
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'estilapp-api' })
 })
@@ -27,6 +39,19 @@ app.post('/recommend', (req, res) => {
   } catch (e) {
     res.status(400).json({ error: String(e.message || e) })
   }
+})
+
+/**
+ * GET /try-on — solo informativo (el navegador hace GET; el try-on real es POST).
+ */
+app.get('/try-on', (_req, res) => {
+  res.json({
+    endpoint: '/try-on',
+    method: 'POST',
+    contentType: 'multipart/form-data',
+    parts: ['image (archivo JPEG)', 'haircutId', 'referenceImageUrl'],
+    note: 'No uses el navegador para probar el corte; usa la app EstilApp o Postman/curl con POST.',
+  })
 })
 
 /**
