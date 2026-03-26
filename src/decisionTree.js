@@ -68,6 +68,15 @@ function densityBonus(density) {
   return 6
 }
 
+function genderAffinityBonus(cut, pref) {
+  if (pref === 'todos') return 0
+  const tag = normalizeTargetGender(cut.targetGender)
+  if (tag === 'unisex' || tag === 'todos') return 0
+  if (pref === 'hombre' && tag === 'hombre') return 12
+  if (pref === 'mujer' && tag === 'mujer') return 12
+  return 0
+}
+
 /**
  * @param {object} input
  * @param {string} input.userFaceShape
@@ -95,6 +104,9 @@ function scoreCandidate(input, cut) {
 
   const w = input.weights || {}
   score *= typeof w.global === 'number' && w.global > 0 ? w.global : 1
+
+  const genderPref = normalizeRecommendationGender(input.recommendationGender)
+  score += genderAffinityBonus(cut, genderPref)
 
   return Math.round(score * 10) / 10
 }
