@@ -148,9 +148,14 @@ app.post('/try-on', upload.single('image'), async (req, res) => {
       })
     } catch (e) {
       console.error('[try-on] Replicate:', e)
+      const raw = String(e.message || e)
+      const billing =
+        /payment|billing|credit|card|subscribe|insufficient|402/i.test(raw)
       return res.status(502).json({
-        error: String(e.message || e),
-        hint: 'Comprueba REPLICATE_API_TOKEN, saldo en replicate.com y que la imagen sea un rostro claro.',
+        error: raw,
+        hint: billing
+          ? 'Replicate requiere cuenta con método de pago o créditos en https://replicate.com/account/billing — el try-on con IA es de pago por uso.'
+          : 'Comprueba REPLICATE_API_TOKEN, saldo en replicate.com y que la imagen sea un rostro claro.',
       })
     }
   }
