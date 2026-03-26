@@ -77,6 +77,47 @@ function genderAffinityBonus(cut, pref) {
   return 0
 }
 
+function normalizeFacialProfileArc(raw) {
+  const s = String(raw || '')
+    .trim()
+    .toLowerCase()
+  if (s === 'concavo') return 'concavo'
+  if (s === 'convexo') return 'convexo'
+  if (s === 'recto') return 'recto'
+  return 'sin_especificar'
+}
+
+/** Alineado con RecommendationScorer.profileArcBonus en la app Android. */
+function profileArcBonus(arcRaw, cut) {
+  const a = normalizeFacialProfileArc(arcRaw)
+  if (a === 'sin_especificar') return 0
+  const blob = `${cut.name || ''} ${cut.description || ''} ${cut.hairTexture || ''} ${cut.profileArcHint || ''}`.toLowerCase()
+  const hint = String(cut.profileArcHint || '')
+    .trim()
+    .toLowerCase()
+  if (hint) {
+    const match =
+      hint.includes('todos') ||
+      (a === 'concavo' && hint.includes('concav')) ||
+      (a === 'convexo' && hint.includes('convex')) ||
+      (a === 'recto' && hint.includes('rect'))
+    if (match) return 14
+  }
+  if (a === 'convexo') {
+    const keys = ['barba', 'nuca', 'posterior', 'perfil', 'mejilla', 'degradado bajo', 'degradado', 'lateral']
+    return keys.some((k) => blob.includes(k)) ? 12 : 0
+  }
+  if (a === 'concavo') {
+    const keys = ['coronilla', 'frente', 'volumen superior', 'altura', 'textur', 'superior']
+    return keys.some((k) => blob.includes(k)) ? 12 : 0
+  }
+  if (a === 'recto') {
+    const keys = ['clásico', 'clasico', 'simétrico', 'simetrico', 'limpio', 'versátil', 'versatil', 'equilibrado']
+    return keys.some((k) => blob.includes(k)) ? 10 : 5
+  }
+  return 0
+}
+
 /**
  * @param {object} input
  * @param {string} input.userFaceShape
@@ -84,7 +125,8 @@ function genderAffinityBonus(cut, pref) {
  * @param {string} [input.hairType]
  * @param {string} [input.hairDensity]
  * @param {string} [input.recommendationGender] todos | hombre | mujer (alineado con la app)
- * @param {Array<{id:string, faceShape:string, hairTexture?:string, targetGender?:string}>} input.candidates
+ * @param {string} [input.facialProfileArc] sin_especificar | concavo | convexo | recto
+ * @param {Array<{id:string, name?:string, faceShape:string, description?:string, hairTexture?:string, targetGender?:string, profileArcHint?:string}>} input.candidates
  * @param {object} [input.weights] pesos opcionales desde feedback (app)
  */
 function scoreCandidate(input, cut) {
@@ -101,6 +143,7 @@ function scoreCandidate(input, cut) {
 
   score += hairTypeBonus(input.hairType, cut.hairTexture)
   score += densityBonus(input.hairDensity)
+  score += profileArcBonus(input.facialProfileArc, cut)
 
   const w = input.weights || {}
   score *= typeof w.global === 'number' && w.global > 0 ? w.global : 1
@@ -124,4 +167,4 @@ function recommendTopThree(input) {
   return scored.slice(0, 3)
 }
 
-module.exports = { recommendTopThree, normalizeShape, normalizePose }
+module.exports = { recommendTopThree, normalizeShape, normalizePose, normalizeFacialProfileArc }
