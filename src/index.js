@@ -1,7 +1,63 @@
+const fs = require('fs')
+const path = require('path')
 const express = require('express')
 const cors = require('cors')
 const multer = require('multer')
 const { recommendTopThree } = require('./decisionTree')
+
+/**
+ * Replicate token: variable de entorno REPLICATE_API_TOKEN, o Secret File en Render.
+ * Render documenta: /etc/secrets/<filename> y también acceso desde la raíz del proyecto (cwd).
+ */
+function ensureReplicateTokenFromFile() {
+  if (process.env.REPLICATE_API_TOKEN?.trim()) {
+    console.log('[estilapp-api] REPLICATE_API_TOKEN tomada de variables de entorno')
+    return
+  }
+
+  const candidates = [
+    process.env.REPLICATE_API_TOKEN_FILE?.trim(),
+    '/etc/secrets/REPLICATE_API_TOKEN',
+    '/etc/secrets/replicate_api_token',
+    path.join(process.cwd(), 'REPLICATE_API_TOKEN'),
+    path.join(process.cwd(), 'replicate_api_token'),
+    // Si el servicio arranca con cwd = carpeta server/
+    path.join(process.cwd(), '..', 'REPLICATE_API_TOKEN'),
+    // Si el entry es server/src/index.js, repo puede montar el secreto junto a server/
+    path.resolve(__dirname, '..', 'REPLICATE_API_TOKEN'),
+    path.resolve(__dirname, '..', '..', 'REPLICATE_API_TOKEN'),
+  ].filter(Boolean)
+
+  const tried = []
+  const seen = new Set()
+
+  for (const p of candidates) {
+    const resolved = path.resolve(p)
+    if (seen.has(resolved)) continue
+    seen.add(resolved)
+    tried.push(resolved)
+
+    try {
+      if (!fs.existsSync(resolved)) continue
+      const st = fs.statSync(resolved)
+      if (!st.isFile()) continue
+      const t = fs.readFileSync(resolved, 'utf8').trim()
+      if (t) {
+        process.env.REPLICATE_API_TOKEN = t
+        console.log('[estilapp-api] REPLICATE_API_TOKEN leída desde archivo:', resolved)
+        return
+      }
+    } catch (e) {
+      console.warn('[estilapp-api] Error leyendo posible secret:', resolved, e.message)
+    }
+  }
+
+  console.warn(
+    '[estilapp-api] REPLICATE_API_TOKEN no encontrada. Try-on usará demo si TRYON_DEMO_PASS_THROUGH=true. Rutas comprobadas:\n  -',
+    tried.join('\n  - ')
+  )
+}
+ensureReplicateTokenFromFile()
 
 const app = express()
 const upload = multer({ limits: { fileSize: 8 * 1024 * 1024 } })
@@ -25,7 +81,13 @@ app.get('/', (_req, res) => {
 })
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'estilapp-api' })
+  const replicateReady = Boolean(process.env.REPLICATE_API_TOKEN?.trim())
+  res.json({
+    ok: true,
+    service: 'estilapp-api',
+    /** true si hay token (env o archivo); no expone el valor */
+    tryOnReplicateConfigured: replicateReady,
+  })
 })
 
 /**

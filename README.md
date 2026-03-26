@@ -70,7 +70,7 @@ La app hace **POST** a esa URL exacta (no añade rutas por detrás).
 
 Para probar recomendación desde Postman o desde un futuro cliente:
 
-- `GET https://TU-SERVICIO.onrender.com/health`
+- `GET https://TU-SERVICIO.onrender.com/health` — incluye `tryOnReplicateConfigured: true/false` (si el servidor ya cargó el token de Replicate, sin mostrar el valor)
 - `POST https://TU-SERVICIO.onrender.com/recommend` con JSON (ver abajo).
 
 ## Contrato `POST /recommend`
