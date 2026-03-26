@@ -52,7 +52,8 @@ Convención de nombres: minúsculas y guiones (`estilapp-api`) es lo más habitu
 5. **Build command**: `npm install`
 6. **Start command**: `npm start`
 7. **Environment** (Variables):
-   - `TRYON_DEMO_PASS_THROUGH` = `true` (hasta que integres un proveedor de IA real; ver abajo).
+   - `REPLICATE_API_TOKEN` = tu token de [Replicate](https://replicate.com/account/api-tokens) (**secreto**). Con esto el try-on usa IA real (`flux-kontext-apps/change-haircut`). Tiene coste por ejecución según tu plan.
+   - `TRYON_DEMO_PASS_THROUGH` = `true` solo si **no** usas token (entonces la app recibe la imagen del catálogo). Si defines `REPLICATE_API_TOKEN`, el servidor prioriza la IA y ya no hace falta el demo para try-on real.
 
 Tras el deploy, la URL será algo como `https://estilapp-api.onrender.com`.
 
@@ -108,7 +109,19 @@ Respuesta:
 
 Igual que `tools/haircuts/RENDER_API.txt`: `multipart/form-data` con `image`, `haircutId`, `referenceImageUrl`.
 
-Con `TRYON_DEMO_PASS_THROUGH=true`, la respuesta devuelve `resultUrl` = `referenceImageUrl` para validar el flujo sin API de terceros.
+### Try-on con IA (Replicate)
+
+1. Crea cuenta en Replicate y un **API token**.
+2. En Render (o en `.env` local): `REPLICATE_API_TOKEN=r8_...`
+3. Vuelve a desplegar. `POST /try-on` enviará la foto del usuario al modelo **flux-kontext-apps/change-haircut** y responderá `{ "resultUrl": "https://replicate.delivery/...", "provider": "replicate" }`.
+
+La app debe tener `render.api.url` apuntando a `https://TU-SERVICIO.onrender.com/try-on` (ver `tools/haircuts/RENDER_API.txt`).
+
+**Notas:** la generación puede tardar **30–90 s**; en planes gratuitos de Render el request puede cortarse por timeout — si pasa, sube de plan o usa otro host con límite mayor. El estilo se infiere del **nombre del corte** (`haircutName`) y la preferencia de género (`genderHint`); no es una copia pixel a pixel de la foto de referencia del catálogo.
+
+### Try-on en demo (sin token)
+
+Con `TRYON_DEMO_PASS_THROUGH=true` y **sin** `REPLICATE_API_TOKEN`, la respuesta devuelve `resultUrl` = `referenceImageUrl` para validar el flujo sin API de terceros.
 
 ## Primer push a GitHub (solo repo `estilapp-api`)
 

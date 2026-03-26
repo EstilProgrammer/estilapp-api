@@ -56,14 +56,41 @@ app.get('/try-on', (_req, res) => {
 
 /**
  * POST /try-on — multipart (misma convención que la app Android).
- * Si TRYON_DEMO_PASS_THROUGH=true, devuelve la referenceImageUrl como resultUrl (tubo probado sin IA externa).
+ * Partes: image, haircutId, referenceImageUrl, opcional haircutName, genderHint (male|female|hombre|mujer).
+ *
+ * Prioridad: si existe REPLICATE_API_TOKEN → IA real (Replicate flux-kontext-apps/change-haircut).
+ * Si no, y TRYON_DEMO_PASS_THROUGH=true → devuelve referenceImageUrl (demo).
  */
-app.post('/try-on', upload.single('image'), (req, res) => {
+app.post('/try-on', upload.single('image'), async (req, res) => {
   const referenceImageUrl = req.body?.referenceImageUrl || ''
   const haircutId = req.body?.haircutId || ''
+  const haircutName = req.body?.haircutName || ''
+  const genderHint = req.body?.genderHint || ''
 
   if (!req.file || !referenceImageUrl) {
     return res.status(400).json({ error: 'Faltan image (file) o referenceImageUrl' })
+  }
+
+  const replicateToken = process.env.REPLICATE_API_TOKEN?.trim()
+  if (replicateToken) {
+    try {
+      const { runTryOnReplicate } = await import('./tryOnReplicate.mjs')
+      const resultUrl = await runTryOnReplicate(req.file.buffer, {
+        haircutName,
+        genderHint,
+      })
+      return res.json({
+        resultUrl,
+        provider: 'replicate',
+        haircutId,
+      })
+    } catch (e) {
+      console.error('[try-on] Replicate:', e)
+      return res.status(502).json({
+        error: String(e.message || e),
+        hint: 'Comprueba REPLICATE_API_TOKEN, saldo en replicate.com y que la imagen sea un rostro claro.',
+      })
+    }
   }
 
   if (TRYON_DEMO) {
@@ -71,12 +98,13 @@ app.post('/try-on', upload.single('image'), (req, res) => {
       resultUrl: referenceImageUrl,
       demo: true,
       haircutId,
-      note: 'TRYON_DEMO_PASS_THROUGH: sustituir por llamada a proveedor de IA cuando tengas API key en Render',
+      note: 'Modo demo: configura REPLICATE_API_TOKEN en el servidor para generación real, o mantén TRYON_DEMO_PASS_THROUGH.',
     })
   }
 
-  res.status(501).json({
-    error: 'Try-on real no configurado. Activa TRYON_DEMO_PASS_THROUGH=true o implementa el proveedor.',
+  res.status(503).json({
+    error:
+      'Try-on no disponible: sin REPLICATE_API_TOKEN y TRYON_DEMO_PASS_THROUGH distinto de true.',
   })
 })
 
